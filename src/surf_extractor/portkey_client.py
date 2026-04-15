@@ -16,17 +16,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _RCN_DEFAULT = "https://us.aigw.galileo.roche.com/v1"
-_WAF_DEFAULT  = "https://waf-us.aigw.galileo.roche.com/v1"
+_WAF_DEFAULT = "https://waf-us.aigw.galileo.roche.com/v1"
 
 
 def _cfg():
     """Read config fresh from env each time (supports late load_dotenv calls)."""
     return {
-        "api_key":  os.getenv("PORTKEY_API_KEY", ""),
-        "rcn_url":  os.getenv("GALILEO_RCN_ENDPOINT", _RCN_DEFAULT),
-        "waf_url":  os.getenv("GALILEO_WAF_ENDPOINT", _WAF_DEFAULT),
-        "model":    os.getenv("PORTKEY_MODEL_ID", "gemini-2.5-pro"),
-        "timeout":  float(os.getenv("PORTKEY_TIMEOUT", "120")),
+        "api_key": os.getenv("PORTKEY_API_KEY", ""),
+        "rcn_url": os.getenv("GALILEO_RCN_ENDPOINT", _RCN_DEFAULT),
+        "waf_url": os.getenv("GALILEO_WAF_ENDPOINT", _WAF_DEFAULT),
+        "model": os.getenv("PORTKEY_MODEL_ID", "gemini-2.5-pro"),
+        "timeout": float(os.getenv("PORTKEY_TIMEOUT", "120")),
         "max_tokens": int(os.getenv("PORTKEY_MAX_TOKENS", "8192")),
     }
 
@@ -34,6 +34,7 @@ def _cfg():
 # ---------------------------------------------------------------------------
 # Client
 # ---------------------------------------------------------------------------
+
 
 class PortKeyClient:
     """
@@ -52,7 +53,7 @@ class PortKeyClient:
     ):
         cfg = _cfg()
         self.api_key = api_key if api_key is not None else cfg["api_key"]
-        self.model   = model   if model   is not None else cfg["model"]
+        self.model = model if model is not None else cfg["model"]
         self.rcn_url = (rcn_url if rcn_url is not None else cfg["rcn_url"]).rstrip("/")
         self.waf_url = (waf_url if waf_url is not None else cfg["waf_url"]).rstrip("/")
         self.timeout = timeout if timeout is not None else cfg["timeout"]
@@ -66,9 +67,7 @@ class PortKeyClient:
                 "portkey-ai package is not installed. Run: pip install portkey-ai"
             )
         if not self.api_key:
-            raise ValueError(
-                "PORTKEY_API_KEY is not set. Add it to your .env file."
-            )
+            raise ValueError("PORTKEY_API_KEY is not set. Add it to your .env file.")
         return Portkey(api_key=self.api_key, base_url=base_url, debug=False)
 
     def chat(
@@ -94,7 +93,12 @@ class PortKeyClient:
         last_exc: Optional[Exception] = None
         for url_label, base_url in [("RCN", self.rcn_url), ("WAF", self.waf_url)]:
             try:
-                logger.info("Calling %s endpoint: %s (model=%s)", url_label, base_url, self.model)
+                logger.info(
+                    "Calling %s endpoint: %s (model=%s)",
+                    url_label,
+                    base_url,
+                    self.model,
+                )
                 portkey = self._get_portkey(base_url)
                 response = portkey.chat.completions.create(**kwargs)
                 content = response.choices[0].message.content
@@ -105,15 +109,25 @@ class PortKeyClient:
                 exc_str = str(exc)
                 logger.error(
                     "%s endpoint failed [%s]: %s",
-                    url_label, exc_type, exc_str, exc_info=True,
+                    url_label,
+                    exc_type,
+                    exc_str,
+                    exc_info=True,
                 )
                 last_exc = exc
                 # Only fall back to WAF on connection-level errors.
                 # 4xx (auth/access) and 5xx (gateway timeout) will repeat on WAF too.
-                is_connection_error = any(w in exc_type for w in ("Connect", "Timeout", "Network"))
-                is_server_error = "504" in exc_str or "503" in exc_str or "502" in exc_str
+                is_connection_error = any(
+                    w in exc_type for w in ("Connect", "Timeout", "Network")
+                )
+                is_server_error = (
+                    "504" in exc_str or "503" in exc_str or "502" in exc_str
+                )
                 if not is_connection_error and not is_server_error:
-                    logger.info("Non-retryable error from %s – skipping WAF fallback.", url_label)
+                    logger.info(
+                        "Non-retryable error from %s – skipping WAF fallback.",
+                        url_label,
+                    )
                     break
 
         raise RuntimeError(
@@ -135,12 +149,12 @@ def build_image_message_content(text: str, images: list[dict]) -> list[dict]:
     content: list[dict] = [{"type": "text", "text": text}]
 
     for img in images:
-        content.append({
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:{img['mime_type']};base64,{img['data']}"
-            },
-        })
+        content.append(
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{img['mime_type']};base64,{img['data']}"},
+            }
+        )
 
     return content
 

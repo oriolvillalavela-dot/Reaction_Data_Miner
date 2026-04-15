@@ -34,8 +34,14 @@ logger = logging.getLogger("agents.QAReviewerAgent")
 # Accepted yield-type vocabulary (lower-cased for comparison)
 # ---------------------------------------------------------------------------
 _ACCEPTED_YIELD_TYPES = {
-    "isolated", "nmr yield", "lcms yield", "hplc yield",
-    "gc yield", "crude yield", "not reported", "",
+    "isolated",
+    "nmr yield",
+    "lcms yield",
+    "hplc yield",
+    "gc yield",
+    "crude yield",
+    "not reported",
+    "",
 }
 
 # Pattern a valid CAS number must match
@@ -139,7 +145,9 @@ class QAReviewerAgent(BaseAgent):
         if self.run_llm_review and (local_issues or not count_ok):
             corrected_rows = self._llm_review(rows, main_text, si_text)
             if not corrected_rows:
-                issues.append("LLM review returned unparseable JSON – keeping previous output.")
+                issues.append(
+                    "LLM review returned unparseable JSON – keeping previous output."
+                )
                 corrected_rows = rows
 
         # ---------------------------------------------------------------
@@ -147,7 +155,10 @@ class QAReviewerAgent(BaseAgent):
         # ---------------------------------------------------------------
         logger.info(
             "QA complete: %d/%d rows, %d missing, %d issues.",
-            actual, expected_count, len(missing_ids), len(issues),
+            actual,
+            expected_count,
+            len(missing_ids),
+            len(issues),
         )
 
         return QAResult(
@@ -170,7 +181,7 @@ class QAReviewerAgent(BaseAgent):
         difference as sorted "T<n>_E<id>" strings.
         """
         if not parsed_tables:
-            return []          # no structured tables → nothing to compare against
+            return []  # no structured tables → nothing to compare against
 
         # Expected: from the parser
         expected: set[str] = set()
@@ -216,12 +227,17 @@ class QAReviewerAgent(BaseAgent):
                 if not key.endswith("_yieldtype"):
                     continue
                 if str(val).lower() not in _ACCEPTED_YIELD_TYPES:
-                    issues.append(f"{prefix}: unrecognised yieldtype in '{key}': {val!r}")
+                    issues.append(
+                        f"{prefix}: unrecognised yieldtype in '{key}': {val!r}"
+                    )
 
             # Numeric fields
             for key in (
-                "temperature_deg_c", "time_h", "scale_mol",
-                "concentration_mol_l", "wavelength_nm",
+                "temperature_deg_c",
+                "time_h",
+                "scale_mol",
+                "concentration_mol_l",
+                "wavelength_nm",
             ):
                 val = str(row.get(key, "")).strip()
                 if not val or val.lower() in ("not reported", ""):

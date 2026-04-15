@@ -17,13 +17,21 @@ logger = logging.getLogger(__name__)
 
 # Compound-role prefixes that carry CAS/SMILES fields in the SURF schema
 COMPOUND_ROLE_PREFIXES = [
-    "startingmat_1", "startingmat_2",
-    "reagent_1", "reagent_2", "reagent_3",
-    "catalyst_1", "catalyst_2",
-    "ligand_1", "ligand_2",
-    "additive_1", "additive_2",
-    "solvent_1", "solvent_2",
-    "product_1", "product_2",
+    "startingmat_1",
+    "startingmat_2",
+    "reagent_1",
+    "reagent_2",
+    "reagent_3",
+    "catalyst_1",
+    "catalyst_2",
+    "ligand_1",
+    "ligand_2",
+    "additive_1",
+    "additive_2",
+    "solvent_1",
+    "solvent_2",
+    "product_1",
+    "product_2",
 ]
 
 
@@ -57,11 +65,15 @@ class ChemResolverAgent:
                 cas = str(row.get(cas_key, "")).strip()
                 smiles = str(row.get(smiles_key, "")).strip()
 
-                if name and (cas == "PENDING_CONVERSION" or smiles == "PENDING_CONVERSION"):
+                if name and (
+                    cas == "PENDING_CONVERSION" or smiles == "PENDING_CONVERSION"
+                ):
                     names_to_resolve.add(name)
 
         if not names_to_resolve:
-            self.logger.info("No PENDING_CONVERSION entries found – skipping resolution.")
+            self.logger.info(
+                "No PENDING_CONVERSION entries found – skipping resolution."
+            )
             return rows
 
         self.logger.info("Resolving %d unique compound names…", len(names_to_resolve))
@@ -98,19 +110,22 @@ class ChemResolverAgent:
         resolved_count = sum(1 for v in resolved.values() if v.get("resolved"))
         self.logger.info(
             "Resolution complete: %d/%d compounds resolved.",
-            resolved_count, len(names_to_resolve),
+            resolved_count,
+            len(names_to_resolve),
         )
         return patched
 
     def _resolve_batch(self, names: list[str]) -> dict[str, dict]:
         """Run resolution in a thread pool (ChemConverter is synchronous I/O)."""
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.max_workers
+            ) as executor:
                 # Split into chunks and submit
                 chunk_size = max(1, len(names) // self.max_workers)
                 futures = {}
                 for i in range(0, len(names), chunk_size):
-                    chunk = names[i:i + chunk_size]
+                    chunk = names[i : i + chunk_size]
                     fut = executor.submit(resolve_compounds_batch, chunk)
                     futures[fut] = chunk
 

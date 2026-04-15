@@ -23,12 +23,14 @@ HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 # ----------------- helpers -----------------
 
+
 def _strip_html(s: Optional[str]) -> Optional[str]:
     if not isinstance(s, str):
         return s
     s2 = unescape(s)
     s3 = HTML_TAG_RE.sub("", s2)
     return re.sub(r"\s{2,}", " ", s3).strip()
+
 
 def _deep_strings(o):
     if isinstance(o, str):
@@ -40,8 +42,10 @@ def _deep_strings(o):
         for it in o:
             yield from _deep_strings(it)
 
+
 def _first(items):
     return items[0] if isinstance(items, list) and items else None
+
 
 def _get_nested(d, paths: List[str]):
     def dig(obj, path):
@@ -56,23 +60,36 @@ def _get_nested(d, paths: List[str]):
             else:
                 return None
         return cur
+
     for p in paths:
         v = dig(d, p)
         if v is not None:
             return v
     return None
 
+
 def _normalize_inchi(v: str) -> str:
     return re.sub(r"^\s*inchi=\s*", "", v, flags=re.I)
 
+
 def _find_cas_anywhere(rec):
     for path in [
-        "casRegistryNumber", "casRN", "rn",
-        "identifiers.casRegistryNumber", "identifiers.cas", "identifiers.casRN",
-        "registryNumber", "registryNumbers", "identifiers.registryNumbers",
-        "ids.cas", "ids.casRegistryNumber", "ids.registryNumber",
-        "substance.casRegistryNumber", "substance.casRN",
-        "substance.registryNumber", "substance.registryNumbers",
+        "casRegistryNumber",
+        "casRN",
+        "rn",
+        "identifiers.casRegistryNumber",
+        "identifiers.cas",
+        "identifiers.casRN",
+        "registryNumber",
+        "registryNumbers",
+        "identifiers.registryNumbers",
+        "ids.cas",
+        "ids.casRegistryNumber",
+        "ids.registryNumber",
+        "substance.casRegistryNumber",
+        "substance.casRN",
+        "substance.registryNumber",
+        "substance.registryNumbers",
     ]:
         v = _get_nested(rec, [path])
         if isinstance(v, list):
@@ -89,12 +106,19 @@ def _find_cas_anywhere(rec):
             return m.group(0)
     return None
 
+
 def _find_inchikey_anywhere(rec):
     for path in [
-        "structures.inchiKey", "structures.InChIKey", "structures.standardInchiKey",
-        "identifiers.inchiKey", "identifiers.InChIKey", "identifiers.standardInchiKey",
-        "ids.inchiKey", "ids.InChIKey",
-        "substance.structures.inchiKey", "substance.identifiers.inchiKey",
+        "structures.inchiKey",
+        "structures.InChIKey",
+        "structures.standardInchiKey",
+        "identifiers.inchiKey",
+        "identifiers.InChIKey",
+        "identifiers.standardInchiKey",
+        "ids.inchiKey",
+        "ids.InChIKey",
+        "substance.structures.inchiKey",
+        "substance.identifiers.inchiKey",
     ]:
         v = _get_nested(rec, [path])
         if isinstance(v, list):
@@ -113,10 +137,18 @@ def _find_inchikey_anywhere(rec):
             return m.group(0).upper()
     return None
 
+
 def _pick_name(rec):
     for path in [
-        "names.iupac", "iupacName", "preferredName", "name", "displayName", "title",
-        "substance.names.iupac", "substance.iupacName", "substance.preferredName",
+        "names.iupac",
+        "iupacName",
+        "preferredName",
+        "name",
+        "displayName",
+        "title",
+        "substance.names.iupac",
+        "substance.iupacName",
+        "substance.preferredName",
     ]:
         v = _get_nested(rec, [path])
         if isinstance(v, list) and v:
@@ -128,11 +160,17 @@ def _pick_name(rec):
         return _strip_html(syn[0])
     return None
 
+
 def _pick_smiles(rec):
     for path in [
-        "structures.isomericSmiles", "isomericSmiles", "structures.canonicalSmiles",
-        "canonicalSmiles", "smiles", "kekuleSmiles",
-        "substance.structures.canonicalSmiles", "substance.canonicalSmiles",
+        "structures.isomericSmiles",
+        "isomericSmiles",
+        "structures.canonicalSmiles",
+        "canonicalSmiles",
+        "smiles",
+        "kekuleSmiles",
+        "substance.structures.canonicalSmiles",
+        "substance.canonicalSmiles",
     ]:
         v = _get_nested(rec, [path])
         if isinstance(v, list) and v:
@@ -140,6 +178,7 @@ def _pick_smiles(rec):
         if isinstance(v, str) and v.strip():
             return v
     return None
+
 
 def _pick_inchi(rec):
     for path in ["structures.inchi", "inchi", "InChI", "substance.structures.inchi"]:
@@ -150,11 +189,15 @@ def _pick_inchi(rec):
             return v
     return None
 
+
 def _pick_mf(rec) -> Optional[str]:
     candidates = [
-        "molecularFormula", "formula",
-        "substance.molecularFormula", "substance.formula",
-        "properties.molecularFormula", "props.molecularFormula",
+        "molecularFormula",
+        "formula",
+        "substance.molecularFormula",
+        "substance.formula",
+        "properties.molecularFormula",
+        "props.molecularFormula",
         "physchem.molecularFormula",
     ]
     v = _get_nested(rec, candidates)
@@ -162,11 +205,16 @@ def _pick_mf(rec) -> Optional[str]:
         return v.strip()
     return None
 
+
 def _pick_mw(rec) -> Optional[float]:
     candidates = [
-        "molecularWeight", "exactMass", "mw",
-        "substance.molecularWeight", "properties.molecularWeight",
-        "props.molecularWeight", "physchem.molecularWeight",
+        "molecularWeight",
+        "exactMass",
+        "mw",
+        "substance.molecularWeight",
+        "properties.molecularWeight",
+        "props.molecularWeight",
+        "physchem.molecularWeight",
     ]
     v = _get_nested(rec, candidates)
     try:
@@ -180,9 +228,11 @@ def _pick_mw(rec) -> Optional[float]:
         return None
     return None
 
+
 def _compute_inchi_from_smiles(smiles: str) -> Optional[str]:
     try:
         from rdkit import Chem
+
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             return None
@@ -190,9 +240,11 @@ def _compute_inchi_from_smiles(smiles: str) -> Optional[str]:
     except Exception:
         return None
 
+
 def _compute_inchikey_from_smiles(smiles: str):
     try:
         from rdkit import Chem
+
         mol = Chem.MolFromSmiles(smiles)
         if not mol:
             return None
@@ -200,9 +252,11 @@ def _compute_inchikey_from_smiles(smiles: str):
     except Exception:
         return None
 
+
 def _compute_inchikey_from_inchi(inchi: str):
     try:
         from rdkit import Chem
+
         s = inchi if inchi.upper().startswith("INCHI=") else f"InChI={inchi}"
         mol = Chem.MolFromInchi(s)
         if not mol:
@@ -211,10 +265,12 @@ def _compute_inchikey_from_inchi(inchi: str):
     except Exception:
         return None
 
+
 def _compute_mf_mw_from_smiles(smiles: str):
     try:
         from rdkit import Chem
         from rdkit.Chem import rdMolDescriptors, Descriptors
+
         mol = Chem.MolFromSmiles(smiles)
         if not mol:
             return None, None
@@ -226,6 +282,7 @@ def _compute_mf_mw_from_smiles(smiles: str):
 
 
 # ----------------- Settings -----------------
+
 
 class CASSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -243,6 +300,7 @@ class CASSettings(BaseSettings):
 
 
 # ----------------- Auth -----------------
+
 
 class CASAuth:
     def __init__(self, settings: CASSettings):
@@ -276,10 +334,13 @@ class CASAuth:
                 pass
         return self._request_token()
 
+
 # ----------------- Rate limiter -----------------
+
 
 class _RateLimiter:
     """Thread-safe limiter enforcing a minimum interval between request starts."""
+
     def __init__(self, rate_per_sec: float = 1.0):
         try:
             rate = float(rate_per_sec)
@@ -301,7 +362,9 @@ class _RateLimiter:
                     return
                 self._cond.wait(timeout=self._next_time - now)
 
+
 # ----------------- HTTP -----------------
+
 
 class RequestHandler:
     def __init__(self, settings: CASSettings, auth: CASAuth):
@@ -312,39 +375,52 @@ class RequestHandler:
 
     def _update_headers(self):
         tok = self.auth.get_token()
-        self.session.headers.update({
-            "Content-Type": "application/json",
-            "Authorization": f"{tok.get('token_type','Bearer')} {tok['access_token']}"
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Authorization": f"{tok.get('token_type','Bearer')} {tok['access_token']}",
+            }
+        )
 
     def _mask_bearer(self, headers: dict) -> dict:
         masked = dict(headers)
         if "Authorization" in masked:
             masked["Authorization"] = re.sub(
-                r"(Bearer\s+)([A-Za-z0-9\-_\.]+)", r"\1***REDACTED***",
-                masked["Authorization"]
+                r"(Bearer\s+)([A-Za-z0-9\-_\.]+)",
+                r"\1***REDACTED***",
+                masked["Authorization"],
             )
         return masked
 
     def _dump(self, kind: str, payload: dict):
         if not self.s.debug:
             return
-        dbg = Path(".cas_debug"); dbg.mkdir(exist_ok=True)
+        dbg = Path(".cas_debug")
+        dbg.mkdir(exist_ok=True)
         ts = int(time.time() * 1000)
-        (dbg / f"{ts}_{kind}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        (dbg / f"{ts}_{kind}.json").write_text(
+            json.dumps(payload, indent=2), encoding="utf-8"
+        )
 
     def post(self, url: str, json_body: Optional[dict] = None) -> dict:
         self._update_headers()
         self._limiter.wait()
-        r = self.session.post(url, data=json.dumps(json_body or {}), verify=self.s.verify_ssl)
+        r = self.session.post(
+            url, data=json.dumps(json_body or {}), verify=self.s.verify_ssl
+        )
         snap = {
-            "request": {"method": "POST", "url": url, "json": json_body or {},
-                        "headers": self._mask_bearer(dict(self.session.headers))},
+            "request": {
+                "method": "POST",
+                "url": url,
+                "json": json_body or {},
+                "headers": self._mask_bearer(dict(self.session.headers)),
+            },
             "status_code": r.status_code,
             "text": r.text[:4000],
         }
         try:
-            j = r.json(); snap["json"] = j
+            j = r.json()
+            snap["json"] = j
         except Exception:
             j = None
         self._dump("response_post", snap)
@@ -356,20 +432,27 @@ class RequestHandler:
         self._limiter.wait()
         r = self.session.get(url, params=params, verify=self.s.verify_ssl)
         snap = {
-            "request": {"method": "GET", "url": url, "params": params or {},
-                        "headers": self._mask_bearer(dict(self.session.headers))},
+            "request": {
+                "method": "GET",
+                "url": url,
+                "params": params or {},
+                "headers": self._mask_bearer(dict(self.session.headers)),
+            },
             "status_code": r.status_code,
             "text": r.text[:4000],
         }
         try:
-            j = r.json(); snap["json"] = j
+            j = r.json()
+            snap["json"] = j
         except Exception:
             j = None
         self._dump("response_get", snap)
         r.raise_for_status()
         return j or {}
 
+
 # ----------------- Models & client -----------------
+
 
 class BaseSearchRequest(BaseModel):
     offset: int = Field(0, ge=0)
@@ -420,58 +503,113 @@ class CASClient:
 
     def _search_substances(self, params: SubstanceSearchRequest):
         url = f"{self._server}/{self.SUBSTANCES_SEARCH}"
-        data = self.http.post(url, json_body=params.model_dump(by_alias=True, exclude_defaults=True))
+        data = self.http.post(
+            url, json_body=params.model_dump(by_alias=True, exclude_defaults=True)
+        )
         return data.get("substances") or data.get("results") or []
 
-    def lookup_by_smiles(self, smiles: str, full: bool = False, wide: bool = False, mf_mw: bool = False) -> Dict:
+    def lookup_by_smiles(
+        self, smiles: str, full: bool = False, wide: bool = False, mf_mw: bool = False
+    ) -> Dict:
         query_inchi = _compute_inchi_from_smiles(smiles)
-        recs = self._search_substances(SubstanceSearchRequest(**{
-            "str": smiles, "strMode": "drw", "length": 20, "echo": "false", "uriOnly": "false"
-        }))
+        recs = self._search_substances(
+            SubstanceSearchRequest(
+                **{
+                    "str": smiles,
+                    "strMode": "drw",
+                    "length": 20,
+                    "echo": "false",
+                    "uriOnly": "false",
+                }
+            )
+        )
         if not recs:
-            recs = self._search_substances(SubstanceSearchRequest(**{
-                "str": smiles, "strMode": "sub", "length": 20, "echo": "false", "uriOnly": "false"
-            }))
+            recs = self._search_substances(
+                SubstanceSearchRequest(
+                    **{
+                        "str": smiles,
+                        "strMode": "sub",
+                        "length": 20,
+                        "echo": "false",
+                        "uriOnly": "false",
+                    }
+                )
+            )
         if not recs:
             return {}
 
         if query_inchi:
-            primary = [r for r in recs if (r.get('inchi') == query_inchi)]
+            primary = [r for r in recs if (r.get("inchi") == query_inchi)]
             if not primary:
                 try:
-                    q_ik = _compute_inchikey_from_inchi(query_inchi) or _compute_inchikey_from_smiles(smiles)
+                    q_ik = _compute_inchikey_from_inchi(
+                        query_inchi
+                    ) or _compute_inchikey_from_smiles(smiles)
                 except Exception:
                     q_ik = None
                 if q_ik:
-                    conn = q_ik.split('-')[0]
-                    primary = [r for r in recs if ((r.get('inchikey') or '').startswith(conn) or
-                                                   (r.get('InChIKey') or '').startswith(conn))]
+                    conn = q_ik.split("-")[0]
+                    primary = [
+                        r
+                        for r in recs
+                        if (
+                            (r.get("inchikey") or "").startswith(conn)
+                            or (r.get("InChIKey") or "").startswith(conn)
+                        )
+                    ]
             recs = primary or recs
 
         best = max(recs, key=lambda r: int(r.get("suppliersCount", 0)))
         details = self._details(_get_nested(best, ["uri"]))
-        return self._extract_fields(details, fallback_smiles=smiles, include_full=full, include_wide=wide, include_mf_mw=mf_mw)
+        return self._extract_fields(
+            details,
+            fallback_smiles=smiles,
+            include_full=full,
+            include_wide=wide,
+            include_mf_mw=mf_mw,
+        )
 
-    def lookup_by_cas(self, rn: str, full: bool = False, wide: bool = False, mf_mw: bool = False) -> Dict:
+    def lookup_by_cas(
+        self, rn: str, full: bool = False, wide: bool = False, mf_mw: bool = False
+    ) -> Dict:
         q = f'rn:"{rn}"'
-        recs = self._search_substances(SubstanceSearchRequest(**{"q": q, "length": 1, "echo": "false", "uriOnly": "false"}))
+        recs = self._search_substances(
+            SubstanceSearchRequest(
+                **{"q": q, "length": 1, "echo": "false", "uriOnly": "false"}
+            )
+        )
         if not recs:
             return {}
         details = self._details(_get_nested(recs[0], ["uri"]))
-        out = self._extract_fields(details, include_full=full, include_wide=wide, include_mf_mw=mf_mw)
+        out = self._extract_fields(
+            details, include_full=full, include_wide=wide, include_mf_mw=mf_mw
+        )
         out["cas"] = out.get("cas") or rn
         return out
 
-    def lookup_by_name(self, name: str, full: bool = False, wide: bool = False, mf_mw: bool = False) -> Dict:
-        recs = self._search_substances(SubstanceSearchRequest(**{"q": name, "length": 1, "echo": "false", "uriOnly": "false"}))
+    def lookup_by_name(
+        self, name: str, full: bool = False, wide: bool = False, mf_mw: bool = False
+    ) -> Dict:
+        recs = self._search_substances(
+            SubstanceSearchRequest(
+                **{"q": name, "length": 1, "echo": "false", "uriOnly": "false"}
+            )
+        )
         if not recs:
             return {}
         details = self._details(_get_nested(recs[0], ["uri"]))
-        return self._extract_fields(details, include_full=full, include_wide=wide, include_mf_mw=mf_mw)
+        return self._extract_fields(
+            details, include_full=full, include_wide=wide, include_mf_mw=mf_mw
+        )
 
-    def _extract_fields(self, details: dict, fallback_smiles: Optional[str] = None,
-                        include_full: bool = False, include_wide: bool = False,
-                        include_mf_mw: bool = False) -> Dict:
+    def _extract_fields(
+        self,
+        details: dict,
+        fallback_smiles: Optional[str] = None,
+        include_full: bool = False,
+        include_wide: bool = False,
+        include_mf_mw: bool = False,
+    ) -> Dict:
         rec = details.get("substance", details) if details else {}
         out = {
             "cas": _find_cas_anywhere(rec),
@@ -500,8 +638,10 @@ class CASClient:
                 cmf, cmw = _compute_mf_mw_from_smiles(out["smiles"])
                 mf = mf or cmf
                 mw = mw or cmw
-            if mf: out["molecular_formula"] = mf
-            if mw: out["molecular_weight"] = round(float(mw), 4)
+            if mf:
+                out["molecular_formula"] = mf
+            if mw:
+                out["molecular_weight"] = round(float(mw), 4)
 
         for k, v in list(out.items()):
             if isinstance(v, str):

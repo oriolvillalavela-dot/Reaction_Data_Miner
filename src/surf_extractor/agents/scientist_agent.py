@@ -39,8 +39,8 @@ from surf_extractor.models import TableRow, ParsedTable, SURF_COLUMNS
 logger = logging.getLogger("agents.ScientistAgent")
 
 _MAX_TOKENS_BASELINE = 4096
-_MAX_TOKENS_CHUNK    = 8192
-_MAX_TOKENS_TEXT     = 16384
+_MAX_TOKENS_CHUNK = 8192
+_MAX_TOKENS_TEXT = 16384
 
 # ---------------------------------------------------------------------------
 # Accepted yield-type vocabulary (used in prompt constraints)
@@ -182,9 +182,7 @@ class ScientistAgent(BaseAgent):
     # Phase 1: Baseline from General Procedures
     # ------------------------------------------------------------------
 
-    def establish_baseline(
-        self, general_procedures: str, main_text: str = ""
-    ) -> dict:
+    def establish_baseline(self, general_procedures: str, main_text: str = "") -> dict:
         """
         Read the General Procedures section and return a flat dict of default
         SURF field values.  Falls back to an empty dict on LLM failure.
@@ -247,15 +245,16 @@ class ScientistAgent(BaseAgent):
             return []
 
         lastname = source_info.get("lastname", "unknown")
-        year     = source_info.get("year", "2024")
-        doi      = source_info.get("doi", "unknown")
+        year = source_info.get("year", "2024")
+        doi = source_info.get("doi", "unknown")
 
         # Build the "RAW ROWS" block
         rows_text = self._format_rows_for_prompt(rows)
 
         instructions_block = (
             f"\nUSER INSTRUCTIONS / OVERRIDES:\n{user_instructions}\n"
-            if user_instructions.strip() else ""
+            if user_instructions.strip()
+            else ""
         )
 
         user_msg = f"""\
@@ -291,7 +290,9 @@ Generate one SURF reaction entry per row. Return the JSON object now.
         except Exception as exc:
             logger.error(
                 "Chunk LLM call failed for %s rows %s: %s",
-                table.table_id, [r.entry_id for r in rows], exc,
+                table.table_id,
+                [r.entry_id for r in rows],
+                exc,
             )
             return []
 
@@ -315,19 +316,20 @@ Generate one SURF reaction entry per row. Return the JSON object now.
         strict JSON output.
         """
         lastname = source_info.get("lastname", "unknown")
-        year     = source_info.get("year", "2024")
-        doi      = source_info.get("doi", "unknown")
+        year = source_info.get("year", "2024")
+        doi = source_info.get("doi", "unknown")
 
-        baseline_json = json.dumps(
-            {k: v for k, v in baseline.items() if v}, indent=2
+        baseline_json = json.dumps({k: v for k, v in baseline.items() if v}, indent=2)
+        system = (
+            TEXT_CHUNK_SYSTEM.replace("{baseline_json}", baseline_json)
+            .replace("{lastname}", lastname)
+            .replace("{year}", year)
         )
-        system = TEXT_CHUNK_SYSTEM.replace(
-            "{baseline_json}", baseline_json
-        ).replace("{lastname}", lastname).replace("{year}", year)
 
         instructions_block = (
             f"USER INSTRUCTIONS:\n{user_instructions}\n\n"
-            if user_instructions.strip() else ""
+            if user_instructions.strip()
+            else ""
         )
 
         user_msg = (
@@ -358,7 +360,9 @@ Generate one SURF reaction entry per row. Return the JSON object now.
                 )
             return self._extract_reactions(raw)
         except Exception as exc:
-            logger.error("Text-chunk LLM call failed (chunk %d): %s", chunk_index + 1, exc)
+            logger.error(
+                "Text-chunk LLM call failed (chunk %d): %s", chunk_index + 1, exc
+            )
             return []
 
     # ------------------------------------------------------------------
@@ -451,7 +455,7 @@ Generate one SURF reaction entry per row. Return the JSON object now.
                 depth -= 1
                 if depth == 0 and obj_start is not None:
                     try:
-                        obj = json.loads(text[obj_start: i + 1])
+                        obj = json.loads(text[obj_start : i + 1])
                         if isinstance(obj, dict) and "rxn_id" in obj:
                             results.append(obj)
                     except json.JSONDecodeError:
@@ -491,5 +495,5 @@ def _patched_chat(
 
 # Apply only if not already patched
 if not getattr(BaseAgent, "_chat_extra_patched", False):
-    BaseAgent._chat = _patched_chat          # type: ignore[method-assign]
-    BaseAgent._chat_extra_patched = True     # type: ignore[attr-defined]
+    BaseAgent._chat = _patched_chat  # type: ignore[method-assign]
+    BaseAgent._chat_extra_patched = True  # type: ignore[attr-defined]

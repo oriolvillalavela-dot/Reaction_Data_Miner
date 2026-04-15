@@ -39,6 +39,7 @@ def _get_cas_client():
             return None
         try:
             from surf_extractor.vendor.cas_client import CASClient
+
             _cas_client_instance = CASClient()
             logger.info("CASClient initialized successfully.")
             return _cas_client_instance
@@ -51,6 +52,7 @@ def _get_cas_client():
 def _iupac_to_smiles(name: str) -> Optional[str]:
     try:
         from surf_extractor.vendor.converters import iupac_to_kekule_smiles
+
         result = iupac_to_kekule_smiles(name)
         if result:
             return result
@@ -60,6 +62,7 @@ def _iupac_to_smiles(name: str) -> Optional[str]:
     # Direct CIRpy fallback (no RDKit required)
     try:
         import cirpy
+
         smiles = cirpy.resolve(name, "smiles")
         return smiles or None
     except Exception as exc:
@@ -70,6 +73,7 @@ def _iupac_to_smiles(name: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def resolve_compound(name: str) -> dict:
     """
@@ -93,7 +97,9 @@ def resolve_compound(name: str) -> dict:
                 result["smiles"] = info.get("smiles")
                 if result["cas"] or result["smiles"]:
                     result["resolved"] = True
-                    logger.debug("Resolved '%s' via CASClient: cas=%s", name, result["cas"])
+                    logger.debug(
+                        "Resolved '%s' via CASClient: cas=%s", name, result["cas"]
+                    )
                     return result
         except Exception as exc:
             logger.warning("CASClient.lookup_by_name failed for '%s': %s", name, exc)

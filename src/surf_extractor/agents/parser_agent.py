@@ -28,11 +28,36 @@ logger = logging.getLogger("agents.ParserAgent")
 # ---------------------------------------------------------------------------
 
 _REACTION_KEYWORDS = {
-    "entry", "yield", "catalyst", "ligand", "base", "solvent", "reagent",
-    "temperature", "temp", "time", "conversion", "ee", "er", "dr",
-    "loading", "equiv", "equivalents", "product", "substrate",
-    "photocatalyst", "oxidant", "reductant", "additive", "selectivity",
-    "t (h)", "t(h)", "isolated", "t (°c)", "smiles", "cas",
+    "entry",
+    "yield",
+    "catalyst",
+    "ligand",
+    "base",
+    "solvent",
+    "reagent",
+    "temperature",
+    "temp",
+    "time",
+    "conversion",
+    "ee",
+    "er",
+    "dr",
+    "loading",
+    "equiv",
+    "equivalents",
+    "product",
+    "substrate",
+    "photocatalyst",
+    "oxidant",
+    "reductant",
+    "additive",
+    "selectivity",
+    "t (h)",
+    "t(h)",
+    "isolated",
+    "t (°c)",
+    "smiles",
+    "cas",
 }
 # A table must have at least this many keyword hits in its headers
 _MIN_KEYWORD_HITS = 2
@@ -51,7 +76,7 @@ _GP_HEADER_PATTERN = re.compile(
     r"general\s+experimental)",
     re.IGNORECASE,
 )
-_GP_WINDOW = 3000          # chars to capture after each GP header
+_GP_WINDOW = 3000  # chars to capture after each GP header
 _GP_FALLBACK_WINDOW = 4000  # chars from SI start if no GP header found
 
 # ---------------------------------------------------------------------------
@@ -92,7 +117,9 @@ class ParserAgent:
         total = sum(t.expected_count for t in tables)
         logger.info(
             "ParserAgent: %d reaction table(s) found, %d rows total. GP: %d chars.",
-            len(tables), total, len(general_procedures),
+            len(tables),
+            total,
+            len(general_procedures),
         )
 
         return ParsedDocument(
@@ -112,7 +139,9 @@ class ParserAgent:
         try:
             import fitz  # PyMuPDF
         except ImportError:
-            logger.warning("PyMuPDF (fitz) not installed – skipping structural table parse.")
+            logger.warning(
+                "PyMuPDF (fitz) not installed – skipping structural table parse."
+            )
             return []
 
         tables: list[ParsedTable] = []
@@ -153,7 +182,7 @@ class ParserAgent:
 
     def _parse_fitz_table(self, tab, candidate_id: int) -> Optional[ParsedTable]:
         """Convert a single PyMuPDF Table object into a ParsedTable, or None if rejected."""
-        raw = tab.extract()          # list[list[str | None]]
+        raw = tab.extract()  # list[list[str | None]]
         if not raw or len(raw) < 2:  # need at least header + 1 data row
             return None
 
@@ -174,19 +203,21 @@ class ParserAgent:
             # Skip blank rows (all cells empty)
             if not any(cells.values()):
                 continue
-            rows.append(TableRow(
-                table_id=table_id,
-                entry_id=entry_id,
-                row_index=row_idx,
-                raw_cells=cells,
-            ))
+            rows.append(
+                TableRow(
+                    table_id=table_id,
+                    entry_id=entry_id,
+                    row_index=row_idx,
+                    raw_cells=cells,
+                )
+            )
 
         if not rows:
             return None
 
         return ParsedTable(
             table_id=table_id,
-            caption="",          # caption extraction is not reliable from find_tables
+            caption="",  # caption extraction is not reliable from find_tables
             headers=headers,
             rows=rows,
         )
@@ -194,8 +225,7 @@ class ParserAgent:
     def _is_reaction_table(self, headers: list[str]) -> bool:
         """Return True if ≥ _MIN_KEYWORD_HITS of the headers match reaction keywords."""
         hits = sum(
-            1 for h in headers
-            if any(kw in h.lower() for kw in _REACTION_KEYWORDS)
+            1 for h in headers if any(kw in h.lower() for kw in _REACTION_KEYWORDS)
         )
         return hits >= _MIN_KEYWORD_HITS
 
@@ -231,14 +261,17 @@ class ParserAgent:
         segments: list[str] = []
         for match in _GP_HEADER_PATTERN.finditer(si_text):
             start = match.start()
-            segment = si_text[start: start + _GP_WINDOW]
+            segment = si_text[start : start + _GP_WINDOW]
             segments.append(segment)
 
         if segments:
             return "\n\n---\n\n".join(segments)
 
         # Fallback: assume GP is at the beginning of the SI
-        logger.debug("No explicit GP header found in SI; using first %d chars.", _GP_FALLBACK_WINDOW)
+        logger.debug(
+            "No explicit GP header found in SI; using first %d chars.",
+            _GP_FALLBACK_WINDOW,
+        )
         return si_text[:_GP_FALLBACK_WINDOW]
 
     # ------------------------------------------------------------------

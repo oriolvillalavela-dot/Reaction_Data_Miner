@@ -16,14 +16,14 @@ def iupac_to_kekule_smiles(name: str) -> Optional[str]:
         import cirpy
         from rdkit import Chem
 
-        inchi = cirpy.resolve(name, 'stdinchi') or cirpy.resolve(name, 'inchi')
+        inchi = cirpy.resolve(name, "stdinchi") or cirpy.resolve(name, "inchi")
         if inchi:
-            s = inchi if inchi.upper().startswith('INCHI=') else f'InChI={inchi}'
+            s = inchi if inchi.upper().startswith("INCHI=") else f"InChI={inchi}"
             mol = Chem.MolFromInchi(s)
             if mol:
                 return Chem.MolToSmiles(mol, isomericSmiles=True)
 
-        smiles = cirpy.resolve(name, 'smiles')
+        smiles = cirpy.resolve(name, "smiles")
         if not smiles:
             return None
         mol = Chem.MolFromSmiles(smiles)

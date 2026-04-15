@@ -16,6 +16,7 @@ import os
 
 # Load .env before anything else reads environment variables
 from dotenv import load_dotenv
+
 load_dotenv()
 import uuid
 import tempfile
@@ -51,12 +52,13 @@ OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 # In-memory job registry (suitable for single-worker deployments)
 # For production, replace with Redis or a database.
 # ---------------------------------------------------------------------------
-_jobs: dict[str, dict] = {}   # job_id → {"progress": JobProgress, "tsv_path": str|None}
+_jobs: dict[str, dict] = {}  # job_id → {"progress": JobProgress, "tsv_path": str|None}
 
 
 # ---------------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------------
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,6 +91,7 @@ app.add_middleware(
 # Helper: run the coordinator in a background thread (it's synchronous I/O)
 # ---------------------------------------------------------------------------
 
+
 def _run_coordinator(
     job_id: str,
     main_pdf: str,
@@ -100,7 +103,11 @@ def _run_coordinator(
     """Runs in a thread pool executor; updates job registry throughout."""
 
     def on_status(status: str, message: str):
-        _jobs[job_id]["progress"].status = JobStatus(status) if status in JobStatus._value2member_map_ else JobStatus.EXTRACTING
+        _jobs[job_id]["progress"].status = (
+            JobStatus(status)
+            if status in JobStatus._value2member_map_
+            else JobStatus.EXTRACTING
+        )
         _jobs[job_id]["progress"].step = status
         _jobs[job_id]["progress"].message = message
 
@@ -121,7 +128,9 @@ def _run_coordinator(
 
         _jobs[job_id]["tsv_path"] = str(tsv_path)
         _jobs[job_id]["progress"].status = JobStatus.DONE
-        _jobs[job_id]["progress"].message = f"Extraction complete. {len(issues)} review note(s)."
+        _jobs[job_id][
+            "progress"
+        ].message = f"Extraction complete. {len(issues)} review note(s)."
         _jobs[job_id]["progress"].download_url = f"/download/{job_id}"
         _jobs[job_id]["progress"].error = "; ".join(issues) if issues else None
 
@@ -136,10 +145,13 @@ def _run_coordinator(
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.get("/health")
 async def health():
     """Health check. Attempts to reach the PortKey/Galileo gateway."""
-    gateway_url = os.getenv("PORTKEY_HEALTH_URL", "https://us.aigw.galileo.roche.com/v1/health")
+    gateway_url = os.getenv(
+        "PORTKEY_HEALTH_URL", "https://us.aigw.galileo.roche.com/v1/health"
+    )
     gateway_ok = False
     gateway_msg = "not checked"
     try:
@@ -159,9 +171,15 @@ async def health():
 @app.post("/extract", response_model=JobProgress, status_code=202)
 async def extract(
     main_pdf: UploadFile = File(..., description="Main publication PDF"),
-    si_pdf: Optional[UploadFile] = File(None, description="Supplementary Information PDF (optional)"),
-    user_instructions: str = Form(default="", description="Custom extraction rules / overrides"),
-    use_visualheist: bool = Form(default=True, description="Run VisualHeist image extraction"),
+    si_pdf: Optional[UploadFile] = File(
+        None, description="Supplementary Information PDF (optional)"
+    ),
+    user_instructions: str = Form(
+        default="", description="Custom extraction rules / overrides"
+    ),
+    use_visualheist: bool = Form(
+        default=True, description="Run VisualHeist image extraction"
+    ),
     large_model: bool = Form(default=False, description="Use large VisualHeist model"),
 ):
     """
@@ -248,7 +266,9 @@ async def download(job_id: str):
 # ---------------------------------------------------------------------------
 _FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
 if _FRONTEND_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="frontend")
+    app.mount(
+        "/", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="frontend"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +276,7 @@ if _FRONTEND_DIR.exists():
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "surf_extractor.main:app",
         host="0.0.0.0",

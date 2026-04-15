@@ -21,7 +21,9 @@ class FormatterAgent:
         Returns the TSV file content as a string (UTF-8).
         """
         if not rows:
-            logger.warning("FormatterAgent received empty rows – returning header-only TSV.")
+            logger.warning(
+                "FormatterAgent received empty rows – returning header-only TSV."
+            )
             return "\t".join(SURF_COLUMNS) + "\n"
 
         # Discover any extra compound columns dynamically
@@ -48,13 +50,19 @@ class FormatterAgent:
             # Sanitise cell values: strip newlines/tabs that would break TSV
             clean_row = {}
             for col in all_columns:
-                val = str(row.get(col, "")).replace("\t", " ").replace("\n", " ").replace("\r", "")
+                val = (
+                    str(row.get(col, ""))
+                    .replace("\t", " ")
+                    .replace("\n", " ")
+                    .replace("\r", "")
+                )
                 clean_row[col] = val
             writer.writerow(clean_row)
 
         tsv_content = buf.getvalue()
         logger.info(
             "Formatter produced %d reaction rows, %d columns.",
-            len(rows), len(all_columns),
+            len(rows),
+            len(all_columns),
         )
         return tsv_content

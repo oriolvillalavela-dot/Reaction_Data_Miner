@@ -44,17 +44,23 @@ def _try_import_visualheist():
         )
         return None
     try:
-        from surf_extractor.vendor.visualheist.methods_visualheist import batch_pdf_to_figures_and_tables
+        from surf_extractor.vendor.visualheist.methods_visualheist import (
+            batch_pdf_to_figures_and_tables,
+        )
+
         _visualheist_fn = batch_pdf_to_figures_and_tables
         logger.info("VisualHeist loaded successfully.")
     except Exception as exc:
-        logger.warning("VisualHeist failed to load: %s – falling back to text-only mode.", exc)
+        logger.warning(
+            "VisualHeist failed to load: %s – falling back to text-only mode.", exc
+        )
     return _visualheist_fn
 
 
 def _try_import_pdfplumber():
     try:
         import pdfplumber
+
         return pdfplumber
     except ImportError:
         return None
@@ -63,6 +69,7 @@ def _try_import_pdfplumber():
 def _try_import_pymupdf():
     try:
         import fitz  # PyMuPDF
+
         return fitz
     except ImportError:
         return None
@@ -71,6 +78,7 @@ def _try_import_pymupdf():
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
+
 
 def extract_text_from_pdf(pdf_path: str) -> str:
     """
@@ -115,7 +123,9 @@ def extract_text_from_pdf(pdf_path: str) -> str:
     return ""
 
 
-def extract_images_from_pdf(pdf_path: str, output_dir: str, large_model: bool = False) -> list[str]:
+def extract_images_from_pdf(
+    pdf_path: str, output_dir: str, large_model: bool = False
+) -> list[str]:
     """
     Use MERMaid VisualHeist to extract tables & figures from a PDF as cropped PNG images.
 
@@ -124,7 +134,9 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str, large_model: bool = 
     """
     batch_fn = _try_import_visualheist()
     if batch_fn is None:
-        logger.warning("VisualHeist unavailable – skipping image extraction for %s", pdf_path)
+        logger.warning(
+            "VisualHeist unavailable – skipping image extraction for %s", pdf_path
+        )
         return []
 
     pdf_path = Path(pdf_path)
@@ -135,18 +147,24 @@ def extract_images_from_pdf(pdf_path: str, output_dir: str, large_model: bool = 
     # containing only our single PDF.
     with tempfile.TemporaryDirectory() as tmp_pdf_dir:
         import shutil
+
         tmp_pdf_path = Path(tmp_pdf_dir) / pdf_path.name
         shutil.copy2(str(pdf_path), str(tmp_pdf_path))
 
         try:
-            batch_fn(input_dir=tmp_pdf_dir, output_dir=str(output_dir), large_model=large_model)
+            batch_fn(
+                input_dir=tmp_pdf_dir,
+                output_dir=str(output_dir),
+                large_model=large_model,
+            )
         except Exception as exc:
             logger.error("VisualHeist raised an exception: %s", exc, exc_info=True)
             return []
 
     # Collect all PNG/JPG files saved by VisualHeist
     image_paths = sorted(
-        p for p in output_dir.rglob("*")
+        p
+        for p in output_dir.rglob("*")
         if p.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     )
     return [str(p) for p in image_paths]
@@ -221,7 +239,9 @@ def parse_pdfs(
     images = images_to_base64(image_paths)
     logger.info(
         "Parsing complete – main_text=%d chars, si_text=%d chars, images=%d",
-        len(main_text), len(si_text), len(images),
+        len(main_text),
+        len(si_text),
+        len(images),
     )
 
     return {

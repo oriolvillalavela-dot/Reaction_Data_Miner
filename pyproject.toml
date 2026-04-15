@@ -10,13 +10,18 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0.0",
+    "pydantic-settings>=2.3.0",
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
-    "rdkit>=2023.03.3",
+    "rdkit-pypi>=2023.03.3",
     "pdfplumber>=0.10.0",
+    "PyMuPDF>=1.24.0",
     "python-dotenv",
     "httpx",
-    "python-multipart"
+    "python-multipart",
+    "portkey-ai>=1.9.0",
+    "cirpy>=1.0.2",
+    "requests>=2.31.0",
 ]
 
 [project.optional-dependencies]

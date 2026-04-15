@@ -48,18 +48,18 @@ from surf_extractor.portkey_client import get_client
 
 logger = logging.getLogger(__name__)
 
-StatusCallback = Callable[[str, str], None]   # (status_key, message)
+StatusCallback = Callable[[str, str], None]  # (status_key, message)
 
 # ---------------------------------------------------------------------------
 # Tunable constants
 # ---------------------------------------------------------------------------
 
-CHUNK_SIZE      = 4     # table rows per Scientist prompt
-MAX_QA_RETRIES  = 2     # re-extraction passes after the first QA check
+CHUNK_SIZE = 4  # table rows per Scientist prompt
+MAX_QA_RETRIES = 2  # re-extraction passes after the first QA check
 
 # Text-chunk fallback constants (mirrors old ExtractionAgent)
-_TEXT_CHUNK_SIZE    = 24_000  # chars
-_TEXT_CHUNK_OVERLAP =  2_000  # chars
+_TEXT_CHUNK_SIZE = 24_000  # chars
+_TEXT_CHUNK_OVERLAP = 2_000  # chars
 
 
 class CoordinatorAgent:
@@ -69,12 +69,12 @@ class CoordinatorAgent:
     """
 
     def __init__(self, client=None):
-        self.client       = client or get_client()
-        self.parser       = ParserAgent()
-        self.scientist    = ScientistAgent(client=self.client)
-        self.qa_reviewer  = QAReviewerAgent(client=self.client)
+        self.client = client or get_client()
+        self.parser = ParserAgent()
+        self.scientist = ScientistAgent(client=self.client)
+        self.qa_reviewer = QAReviewerAgent(client=self.client)
         self.chem_resolver = ChemResolverAgent()
-        self.formatter    = FormatterAgent()
+        self.formatter = FormatterAgent()
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -95,6 +95,7 @@ class CoordinatorAgent:
         Returns:
             (tsv_content: str, issues: list[str])
         """
+
         def _emit(status: str, msg: str):
             logger.info("[Coordinator] %s: %s", status, msg)
             if on_status:
@@ -115,8 +116,8 @@ class CoordinatorAgent:
             )
 
             main_text = raw_parsed["main_text"]
-            si_text   = raw_parsed["si_text"]
-            images    = raw_parsed["images"]
+            si_text = raw_parsed["si_text"]
+            images = raw_parsed["images"]
 
             _emit(
                 "parsing",
@@ -127,7 +128,10 @@ class CoordinatorAgent:
             # ------------------------------------------------------------------ #
             # Step 2 – Structural parse (Parser Agent)
             # ------------------------------------------------------------------ #
-            _emit("parsing", "Parser Agent: detecting reaction tables and General Procedures…")
+            _emit(
+                "parsing",
+                "Parser Agent: detecting reaction tables and General Procedures…",
+            )
 
             parsed: ParsedDocument = self.parser.run(
                 main_pdf_path=main_pdf_path,
@@ -140,19 +144,25 @@ class CoordinatorAgent:
             table_summary = (
                 f"{len(parsed.tables)} table(s) found, "
                 f"{parsed.total_expected_reactions} rows expected."
-                if parsed.tables else "No structured tables detected – will use text-chunk fallback."
+                if parsed.tables
+                else "No structured tables detected – will use text-chunk fallback."
             )
             _emit("parsing", f"Parser complete: {table_summary}")
 
             # ------------------------------------------------------------------ #
             # Step 3 – Source metadata + Baseline (Scientist Phase 1)
             # ------------------------------------------------------------------ #
-            _emit("extracting", "Scientist Agent: reading General Procedures to establish baseline…")
+            _emit(
+                "extracting",
+                "Scientist Agent: reading General Procedures to establish baseline…",
+            )
 
             source_info = ParserAgent.extract_source_info(main_text)
             logger.info(
                 "Source info: doi=%s  author=%s  year=%s",
-                source_info["doi"], source_info["lastname"], source_info["year"],
+                source_info["doi"],
+                source_info["lastname"],
+                source_info["year"],
             )
 
             baseline = self.scientist.establish_baseline(
@@ -262,7 +272,10 @@ class CoordinatorAgent:
             _emit("resolving", "Chemical Resolution Agent (ChemConverter)…")
 
             resolved_rows = self.chem_resolver.run(all_rows)
-            _emit("resolving", f"Chemical resolution complete for {len(resolved_rows)} rows.")
+            _emit(
+                "resolving",
+                f"Chemical resolution complete for {len(resolved_rows)} rows.",
+            )
 
             # ------------------------------------------------------------------ #
             # Step 7 – Formatter
@@ -380,7 +393,10 @@ class CoordinatorAgent:
                 new += 1
             logger.info(
                 "Text chunk %d/%d: %d new row(s) (total %d).",
-                idx + 1, len(chunks), new, len(all_rows),
+                idx + 1,
+                len(chunks),
+                new,
+                len(all_rows),
             )
 
         return all_rows
@@ -409,7 +425,9 @@ class CoordinatorAgent:
             table_id, entry_id = _split_entry_key(key)
             table = table_map.get(table_id)
             if not table:
-                logger.warning("Re-extract: table %s not found in parsed doc.", table_id)
+                logger.warning(
+                    "Re-extract: table %s not found in parsed doc.", table_id
+                )
                 continue
 
             row = next((r for r in table.rows if r.entry_id == entry_id), None)
@@ -436,9 +454,10 @@ class CoordinatorAgent:
 # Utility helpers
 # ---------------------------------------------------------------------------
 
+
 def _chunk_list(lst: list, size: int) -> list[list]:
     """Split lst into sub-lists of at most `size` elements."""
-    return [lst[i: i + size] for i in range(0, len(lst), size)]
+    return [lst[i : i + size] for i in range(0, len(lst), size)]
 
 
 def _make_text_chunks(text: str, chunk_size: int, overlap: int) -> list[str]:

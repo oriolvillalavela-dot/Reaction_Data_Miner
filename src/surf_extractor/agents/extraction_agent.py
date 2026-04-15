@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Chunking config
 # ---------------------------------------------------------------------------
-_CHUNK_SIZE    = 24000   # chars per chunk (safe for gateway timeout at 16384 tokens)
-_CHUNK_OVERLAP = 2000    # overlap between adjacent chunks
-_MAX_TOKENS    = 16384   # output token limit per LLM call
+_CHUNK_SIZE = 24000  # chars per chunk (safe for gateway timeout at 16384 tokens)
+_CHUNK_OVERLAP = 2000  # overlap between adjacent chunks
+_MAX_TOKENS = 16384  # output token limit per LLM call
 
 # ---------------------------------------------------------------------------
 # Core extraction system prompt
@@ -107,7 +107,8 @@ class ExtractionAgent(BaseAgent):
         """
         instructions_header = (
             f"User Specific Instructions / Overrides:\n{user_instructions}\n\n"
-            if user_instructions.strip() else ""
+            if user_instructions.strip()
+            else ""
         )
 
         # Combine texts with clear section labels
@@ -119,7 +120,9 @@ class ExtractionAgent(BaseAgent):
         chunks = self._make_chunks(combined)
         self.logger.info(
             "Chunked extraction: %d chunks (~%d chars each, overlap=%d).",
-            len(chunks), _CHUNK_SIZE, _CHUNK_OVERLAP,
+            len(chunks),
+            _CHUNK_SIZE,
+            _CHUNK_OVERLAP,
         )
 
         all_rows: list[dict] = []
@@ -177,7 +180,10 @@ class ExtractionAgent(BaseAgent):
 
             self.logger.info(
                 "Chunk %d/%d: %d new reaction(s) (total: %d).",
-                idx + 1, len(chunks), new_count, len(all_rows),
+                idx + 1,
+                len(chunks),
+                new_count,
+                len(all_rows),
             )
 
         return all_rows
@@ -205,7 +211,10 @@ class ExtractionAgent(BaseAgent):
         # Find the outermost JSON array start
         start = cleaned.find("[")
         if start == -1:
-            self.logger.error("No JSON array found in response.\nRaw (first 500 chars):\n%s", raw[:500])
+            self.logger.error(
+                "No JSON array found in response.\nRaw (first 500 chars):\n%s",
+                raw[:500],
+            )
             return []
         cleaned = cleaned[start:]
 
@@ -217,7 +226,9 @@ class ExtractionAgent(BaseAgent):
             if isinstance(data, dict):
                 return [data]
         except json.JSONDecodeError as exc:
-            self.logger.warning("JSON parse failed (%s) – attempting truncation recovery…", exc)
+            self.logger.warning(
+                "JSON parse failed (%s) – attempting truncation recovery…", exc
+            )
 
         # Recovery: extract all complete {...} objects from the array
         results = []
@@ -243,7 +254,7 @@ class ExtractionAgent(BaseAgent):
                     depth -= 1
                     if depth == 0 and obj_start is not None:
                         try:
-                            obj = json.loads(cleaned[obj_start:i + 1])
+                            obj = json.loads(cleaned[obj_start : i + 1])
                             if isinstance(obj, dict):
                                 results.append(obj)
                         except json.JSONDecodeError:
@@ -252,8 +263,12 @@ class ExtractionAgent(BaseAgent):
             i += 1
 
         if results:
-            self.logger.info("Truncation recovery extracted %d reaction(s).", len(results))
+            self.logger.info(
+                "Truncation recovery extracted %d reaction(s).", len(results)
+            )
         else:
-            self.logger.error("JSON parse failed completely.\nRaw (first 500 chars):\n%s", raw[:500])
+            self.logger.error(
+                "JSON parse failed completely.\nRaw (first 500 chars):\n%s", raw[:500]
+            )
 
         return results

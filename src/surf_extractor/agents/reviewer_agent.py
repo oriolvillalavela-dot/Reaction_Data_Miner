@@ -102,7 +102,9 @@ Please review and return the corrected JSON array.
                     self.logger.info("All checks passed after round %d.", round_num)
                     break
             else:
-                issues.append(f"Round {round_num}: LLM returned unparseable JSON – keeping previous output.")
+                issues.append(
+                    f"Round {round_num}: LLM returned unparseable JSON – keeping previous output."
+                )
                 break
 
         return rows, issues
@@ -127,8 +129,14 @@ Please review and return the corrected JSON array.
         issues = []
         cas_pattern = re.compile(r"^\d{2,7}-\d{2}-\d$")
         accepted_yield_types = {
-            "isolated", "nmr yield", "lcms yield", "hplc yield",
-            "gc yield", "crude yield", "not reported", "",
+            "isolated",
+            "nmr yield",
+            "lcms yield",
+            "hplc yield",
+            "gc yield",
+            "crude yield",
+            "not reported",
+            "",
         }
 
         for i, row in enumerate(rows):
@@ -136,22 +144,41 @@ Please review and return the corrected JSON array.
 
             # Check CAS fields
             for key, val in row.items():
-                if key.endswith("_cas") and val not in ("PENDING_CONVERSION", "not reported", ""):
+                if key.endswith("_cas") and val not in (
+                    "PENDING_CONVERSION",
+                    "not reported",
+                    "",
+                ):
                     if not cas_pattern.match(str(val)):
-                        issues.append(f"{prefix}: suspicious CAS value in '{key}': {val!r}")
+                        issues.append(
+                            f"{prefix}: suspicious CAS value in '{key}': {val!r}"
+                        )
 
             # Check yield type fields
             for key, val in row.items():
-                if key.endswith("_yieldtype") and val.lower() not in accepted_yield_types:
-                    issues.append(f"{prefix}: unrecognised yieldtype in '{key}': {val!r}")
+                if (
+                    key.endswith("_yieldtype")
+                    and val.lower() not in accepted_yield_types
+                ):
+                    issues.append(
+                        f"{prefix}: unrecognised yieldtype in '{key}': {val!r}"
+                    )
 
             # Check numeric fields
-            for key in ["temperature_deg_c", "time_h", "scale_mol", "concentration_mol_l", "wavelength_nm"]:
+            for key in [
+                "temperature_deg_c",
+                "time_h",
+                "scale_mol",
+                "concentration_mol_l",
+                "wavelength_nm",
+            ]:
                 val = str(row.get(key, "")).strip()
                 if val and val.lower() not in ("not reported", ""):
                     try:
                         float(val.replace("~", "").replace("<", "").replace(">", ""))
                     except ValueError:
-                        issues.append(f"{prefix}: non-numeric value in '{key}': {val!r}")
+                        issues.append(
+                            f"{prefix}: non-numeric value in '{key}': {val!r}"
+                        )
 
         return issues
