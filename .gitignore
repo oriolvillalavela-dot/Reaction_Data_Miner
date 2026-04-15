@@ -1,0 +1,24 @@
+# Environments
+.env
+.venv/
+env/
+**/__pycache__/
+
+# Python
+*.py[cod]
+*.so
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data Outputs/Inputs
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# IDEs
+.vscode/
+.idea/

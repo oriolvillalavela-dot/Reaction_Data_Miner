@@ -1,0 +1,11 @@
+name: surf_extractor
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.10
+  - rdkit
+  - pip
+  - pip:
+    - -e .
+    - -e .[dev]
