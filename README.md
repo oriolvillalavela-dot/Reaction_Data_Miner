@@ -5,16 +5,125 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![RDKit](https://img.shields.io/badge/RDKit-2023.03.3-green.svg)](https://www.rdkit.org/)
 
-## Abstract
-The extraction of standardized chemical reaction data from unstructured scientific literature remains a critical bottleneck in data-driven chemistry. We introduce **SURF Extractor**, an autonomous multi-agent pipeline powered by Large Language Models (LLMs) that extracts, validates, and normalizes reaction data from main publications and Supplementary Information (SI) into the rigorous SURF format. Relying on an orchestrated team of specialized agents—including an Extraction Agent, a Hallucination Critic, and a Chemical Resolution Agent—this framework bridges NLP vision models and established cheminformatics tools to generate high-fidelity, machine-readable datasets for retrosynthesis prediction and automated synthesis planning.
+## Summary
+The extraction of standardized chemical reaction data from unstructured scientific literature remains a critical bottleneck in data-driven chemistry. **SURF Extractor** is an autonomous multi-agent pipeline powered by LLMs that extracts, validates, and normalizes reaction data from main publications and SI into the rigorous SURF format. Relying on an orchestrated team of agents, including an Extraction Agent, a Scientist, an Hallucination Critic, and a Chemical Resolution Agent this framework bridges NLP vision models and established cheminformatics tools to generate high-fidelity, machine-readable datasets for automated synthesis planning.
 
 ## Architecture
 
-![Architecture Diagram Placeholder](https://via.placeholder.com/800x400.png?text=Architecture%3A+Coordinating+5+Agents+%28Parser%2C+Extractor%2C+Critic%2C+Resolver%2C+Formatter%29)
-*Figure 1: SURF Extractor pipeline. The Coordinator Agent orchestrates document parsing (VisualHeist), information extraction (Gemini 2.5 Pro), hallucination criticism, chemical resolution (RDKit/CASClient), and SURF-compliant TSV formatting.*
+SURF Extractor implements a **multi-agent pipeline** where five specialized agents, orchestrated by a central Coordinator, progressively transform raw scientific PDFs into validated, machine-readable SURF records. The system exposes a **FastAPI** REST backend with asynchronous job processing and a static single-page frontend for interactive use.
 
-## Context & State-of-the-Art
-SURF Extractor directly builds upon recent advances in **Artificial Chemical Intelligence** and autonomous agents. While foundational work has demonstrated the reasoning capacities of LLMs for forward-synthesis and instrument execution, achieving high-throughput, structured data ingestion from legacy formats (PDFs) remains challenging. SURF Extractor directly addresses this by constraining generative capabilities with a "Critic Agent" paradigm and strict RDKit validation, establishing a data-flywheel for training the next generation of chemical foundation models.
+### Pipeline Overview
+
+```mermaid
+flowchart TD
+    subgraph INPUT ["📄 Input"]
+        PDF_MAIN["Main Paper PDF"]
+        PDF_SI["SI PDF (optional)"]
+    end
+
+    subgraph STEP1 ["Step 1 – PDF Parsing"]
+        MERMAID["MERMaid Wrapper<br/><i>pdfplumber / PyMuPDF</i>"]
+        VH["VisualHeist<br/><i>Table & figure extraction</i>"]
+    end
+
+    subgraph STEP2 ["Step 2 – Structural Analysis"]
+        PARSER["🔬 Parser Agent<br/><i>Table detection, GP extraction,<br/>source metadata</i>"]
+    end
+
+    subgraph STEP3 ["Step 3 – Baseline Extraction"]
+        BASELINE["🧪 Scientist Agent – Phase 1<br/><i>General Procedure → default params</i>"]
+    end
+
+    subgraph STEP4 ["Step 4 – Reaction Extraction"]
+        direction LR
+        STRUCT["Structured Path<br/><i>Chunked table rows (3–5/batch)</i>"]
+        FALLBACK["Text-Chunk Fallback<br/><i>Overlapping 24 KB windows</i>"]
+    end
+
+    subgraph STEP5 ["Step 5 – Quality Assurance"]
+        QA["✅ QA Reviewer Agent<br/><i>Count reconciliation, local checks,<br/>LLM review, re-extraction loop</i>"]
+    end
+
+    subgraph STEP6 ["Step 6 – Chemical Resolution"]
+        CHEM["⚗️ Chem Resolver Agent<br/><i>CAS SciFinder + CIRpy + RDKit</i>"]
+    end
+
+    subgraph STEP7 ["Step 7 – Output"]
+        FMT["📋 Formatter Agent<br/><i>SURF TSV generation</i>"]
+    end
+
+    PDF_MAIN --> MERMAID
+    PDF_SI --> MERMAID
+    PDF_MAIN --> VH
+    PDF_SI --> VH
+    MERMAID --> PARSER
+    VH --> PARSER
+    PARSER -->|Tables found| STRUCT
+    PARSER -->|No tables| FALLBACK
+    PARSER --> BASELINE
+    BASELINE --> STRUCT
+    BASELINE --> FALLBACK
+    STRUCT --> QA
+    FALLBACK --> QA
+    QA -->|Missing entries| STRUCT
+    QA --> CHEM
+    CHEM --> FMT
+    FMT --> TSV["SURF .tsv file"]
+```
+
+### Agent Descriptions
+
+| Agent | Module | Role |
+|---|---|---|
+| **Coordinator** | `agents/coordinator.py` | Top-level orchestrator. Manages the 7-step pipeline, decides between the structured and text-chunk fallback paths, and drives the QA re-extraction loop. |
+| **Parser Agent** | `agents/parser_agent.py` | Structural PDF understanding via PyMuPDF `find_tables()`. Detects reaction tables using keyword heuristics, extracts General Procedure sections from SI text, and resolves source metadata (DOI, author, year). |
+| **Scientist Agent** | `agents/scientist_agent.py` | Chemical domain expert powered by Gemini 2.5 Pro. Operates in two phases: (1) reads General Procedures to establish baseline default parameters, (2) processes small batches of table rows, inheriting baseline values and overriding only what each entry specifies. Enforces strict JSON output and unit conversions (mol% → eq, min → h). |
+| **QA Reviewer Agent** | `agents/qa_reviewer_agent.py` | Count-aware validator. Reconciles extracted row counts against parser expectations, identifies missing entries by `rxn_id`, runs local checks (CAS format, yield-type vocabulary, numeric fields), and optionally invokes an LLM review pass for semantic correction. |
+| **Chem Resolver Agent** | `agents/chem_resolver_agent.py` | Resolves `PENDING_CONVERSION` CAS numbers and SMILES strings using a multi-strategy cascade: CAS SciFinder API → CIRpy/NCI resolver → RDKit canonicalization. Runs concurrently via a thread pool. |
+| **Formatter Agent** | `agents/formatter_agent.py` | Deterministic serializer. Compiles resolved SURF rows into a tab-separated file following the canonical SURF column order (60+ fields), with dynamic discovery of extra compound columns. |
+
+### Integration Layer
+
+| Integration | Module | Purpose |
+|---|---|---|
+| **MERMaid Wrapper** | `integrations/mermaid_wrapper.py` | Text extraction (pdfplumber → PyMuPDF fallback) + optional VisualHeist ML-based image extraction for tables rendered as figures. |
+| **ChemConverter Wrapper** | `integrations/chemconv_wrapper.py` | Chemical name → CAS/SMILES resolution via vendored `CASClient` and `CIRpy`. Thread-safe singleton pattern. |
+| **PortKey Client** | `portkey_client.py` | Synchronous LLM gateway client. Calls Gemini 2.5 Pro via the Galileo/PortKey API with automatic RCN → WAF endpoint failover. Supports multimodal (text + image) messages. |
+
+
+### Project Structure
+
+```
+surf_extractor/
+├── src/surf_extractor/          # Main Python package
+│   ├── main.py                  # FastAPI application (4 endpoints)
+│   ├── models.py                # Pydantic models (SURFRow, ParsedDocument, QAResult, …)
+│   ├── portkey_client.py        # PortKey/Galileo LLM gateway client
+│   ├── agents/                  # Multi-agent system
+│   │   ├── base_agent.py        # BaseAgent with LLM chat methods
+│   │   ├── coordinator.py       # Pipeline orchestrator
+│   │   ├── parser_agent.py      # Structural PDF analysis
+│   │   ├── scientist_agent.py   # Chemical data extraction (Gemini 2.5 Pro)
+│   │   ├── qa_reviewer_agent.py # Validation & re-extraction loop
+│   │   ├── chem_resolver_agent.py # CAS/SMILES resolution
+│   │   └── formatter_agent.py   # SURF TSV serialization
+│   ├── integrations/            # External tool wrappers
+│   │   ├── mermaid_wrapper.py   # PDF text + image extraction
+│   │   └── chemconv_wrapper.py  # Chemical name resolution
+│   └── vendor/                  # Vendored third-party code
+│       ├── cas_client.py        # CAS SciFinder API client
+│       ├── converters.py        # IUPAC → SMILES conversion
+│       └── visualheist/         # ML-based figure/table extraction
+├── frontend/                    # Single-page web UI (index.html)
+├── tests/                       # Test suite
+├── notebooks/                   # Jupyter notebooks for demos
+├── data/                        # Input data directory
+├── outputs/                     # Generated SURF TSV files
+├── run.sh                       # Startup script (uv / pip + uvicorn)
+├── pyproject.toml               # Build configuration (hatchling)
+├── requirements.txt             # Full dependency list
+└── environment.yml              # Conda environment specification
+```
 
 ## Installation 
 
